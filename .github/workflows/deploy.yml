@@ -57,10 +57,11 @@ jobs:
           # Include latest Python beta.
           CIBW_ENABLE: cpython-prerelease pypy graalpy
           # Skip EOL Python versions and GraalPy on Windows.
-          CIBW_SKIP: "pp310* gp311* gp*-win_amd64"
+          CIBW_SKIP: "pp310* gp311*"
           # Run the test suite after each build.
           CIBW_TEST_REQUIRES: "pytest"
           CIBW_TEST_COMMAND: pytest {package}/tests
+          PIP_PROGRESS_BAR: "off"
 
       - name: Upload as build artifacts
         uses: actions/upload-artifact@v4
