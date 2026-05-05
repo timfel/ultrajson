@@ -22,6 +22,10 @@ on:
         description: Repository containing the GraalPy artifacts
         default: timfel/graalpython
         required: false
+      debug_graalpy_url:
+        type: string
+        description: Direct GraalPy macOS aarch64 tarball URL
+        required: false
 
 permissions: {}
 
@@ -30,7 +34,7 @@ env:
 
 jobs:
   build-wheels:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.debug_graalpython_run_id == '' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.debug_graalpython_run_id == '' && inputs.debug_graalpy_url == '') }}
     name: "${{ matrix.os }}: ${{ matrix.cibw_arch }}"
     runs-on: ${{ matrix.os }}
     strategy:
@@ -82,7 +86,7 @@ jobs:
           path: dist/*.whl
 
   debug-macos-graalpy:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_graalpython_run_id != '' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.debug_graalpython_run_id != '' || inputs.debug_graalpy_url != '') }}
     name: macOS GraalPy
     runs-on: macos-latest
     steps:
@@ -95,6 +99,7 @@ jobs:
           python-version: "3.x"
 
       - name: Download GraalPy aarch64 artifact
+        if: ${{ inputs.debug_graalpython_run_id != '' }}
         uses: actions/download-artifact@v5
         with:
           repository: ${{ inputs.debug_graalpython_repo }}
@@ -113,7 +118,7 @@ jobs:
           CIBW_ENABLE: graalpy
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: pytest {package}/tests
-          CIBW_GRAALPY_MACOS_AARCH64_URL: file://${{ github.workspace }}/graalpy-artifacts/aarch64/graalpy-debug-macos-aarch64.tar.gz
+          CIBW_GRAALPY_MACOS_AARCH64_URL: ${{ inputs.debug_graalpy_url != '' && inputs.debug_graalpy_url || format('file://{0}/graalpy-artifacts/aarch64/graalpy-debug-macos-aarch64.tar.gz', github.workspace) }}
           PIP_PROGRESS_BAR: "off"
 
       - uses: actions/upload-artifact@v4
@@ -123,7 +128,7 @@ jobs:
           if-no-files-found: error
 
   build-sdist-and-upload:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.debug_graalpython_run_id == '' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.debug_graalpython_run_id == '' && inputs.debug_graalpy_url == '') }}
     runs-on: ubuntu-latest
     needs: ['build-wheels']
     permissions:
