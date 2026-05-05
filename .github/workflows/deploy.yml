@@ -24,8 +24,15 @@ on:
         required: false
       debug_graalpy_url:
         type: string
-        description: Direct GraalPy macOS aarch64 tarball URL
+        description: Direct GraalPy macOS tarball URL
         required: false
+      debug_graalpy_arch:
+        type: choice
+        description: macOS architecture to debug
+        default: aarch64
+        options:
+          - aarch64
+          - amd64
 
 permissions: {}
 
@@ -88,7 +95,7 @@ jobs:
   debug-macos-graalpy:
     if: ${{ github.event_name == 'workflow_dispatch' && (inputs.debug_graalpython_run_id != '' || inputs.debug_graalpy_url != '') }}
     name: macOS GraalPy
-    runs-on: macos-latest
+    runs-on: ${{ inputs.debug_graalpy_arch == 'amd64' && 'macos-13' || 'macos-latest' }}
     steps:
       - uses: actions/checkout@v5
       - run: git fetch --prune --unshallow
@@ -99,7 +106,7 @@ jobs:
           python-version: "3.x"
 
       - name: Download GraalPy aarch64 artifact
-        if: ${{ inputs.debug_graalpython_run_id != '' }}
+        if: ${{ inputs.debug_graalpython_run_id != '' && inputs.debug_graalpy_arch == 'aarch64' }}
         uses: actions/download-artifact@v5
         with:
           repository: ${{ inputs.debug_graalpython_repo }}
@@ -113,12 +120,12 @@ jobs:
         with:
           output-dir: dist
         env:
-          CIBW_ARCHS: arm64
-          CIBW_BUILD: "gp312_250-macosx_arm64"
+          CIBW_ARCHS: ${{ inputs.debug_graalpy_arch == 'amd64' && 'x86_64' || 'arm64' }}
+          CIBW_BUILD: ${{ inputs.debug_graalpy_arch == 'amd64' && 'gp312_250-macosx_x86_64' || 'gp312_250-macosx_arm64' }}
           CIBW_ENABLE: graalpy
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: pytest {package}/tests
-          CIBW_GRAALPY_MACOS_AARCH64_URL: ${{ inputs.debug_graalpy_url != '' && inputs.debug_graalpy_url || format('file://{0}/graalpy-artifacts/aarch64/graalpy-debug-macos-aarch64.tar.gz', github.workspace) }}
+          CIBW_GRAALPY_MACOS_URL: ${{ inputs.debug_graalpy_url != '' && inputs.debug_graalpy_url || format('file://{0}/graalpy-artifacts/aarch64/graalpy-debug-macos-aarch64.tar.gz', github.workspace) }}
           PIP_PROGRESS_BAR: "off"
 
       - uses: actions/upload-artifact@v4
