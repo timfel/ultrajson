@@ -1,0 +1,72 @@
+name: Debug macOS GraalPy Wheels
+
+on:
+  workflow_dispatch:
+    inputs:
+      graalpython_run_id:
+        type: string
+        description: Run id from timfel/graalpython's Debug macOS GraalPy Artifact workflow
+        required: true
+      graalpython_repo:
+        type: string
+        description: Repository containing the GraalPy artifacts
+        default: timfel/graalpython
+        required: true
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  FORCE_COLOR: 1
+
+jobs:
+  build-wheels:
+    name: macOS GraalPy
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: git fetch --prune --unshallow
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Download GraalPy amd64 artifact
+        uses: actions/download-artifact@v5
+        with:
+          repository: ${{ inputs.graalpython_repo }}
+          run-id: ${{ inputs.graalpython_run_id }}
+          name: graalpy-macos-amd64
+          path: graalpy-artifacts/amd64
+          github-token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Download GraalPy aarch64 artifact
+        uses: actions/download-artifact@v5
+        with:
+          repository: ${{ inputs.graalpython_repo }}
+          run-id: ${{ inputs.graalpython_run_id }}
+          name: graalpy-macos-aarch64
+          path: graalpy-artifacts/aarch64
+          github-token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Build GraalPy wheels
+        uses: timfel/cibuildwheel@tim/debug-ultrajson-macos-graalpy
+        with:
+          output-dir: dist
+        env:
+          CIBW_ARCHS: "x86_64 arm64"
+          CIBW_BUILD: "gp312_250-macosx_*"
+          CIBW_ENABLE: graalpy
+          CIBW_TEST_REQUIRES: pytest
+          CIBW_TEST_COMMAND: pytest {package}/tests
+          CIBW_GRAALPY_MACOS_AMD64_URL: file://${{ github.workspace }}/graalpy-artifacts/amd64/graalpy-debug-macos-amd64.tar.gz
+          CIBW_GRAALPY_MACOS_AARCH64_URL: file://${{ github.workspace }}/graalpy-artifacts/aarch64/graalpy-debug-macos-aarch64.tar.gz
+          PIP_PROGRESS_BAR: "off"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos-graalpy
+          path: dist/*.whl
+          if-no-files-found: error
