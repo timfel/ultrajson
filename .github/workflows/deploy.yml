@@ -95,7 +95,7 @@ jobs:
   debug-macos-graalpy:
     if: ${{ github.event_name == 'workflow_dispatch' && (inputs.debug_graalpython_run_id != '' || inputs.debug_graalpy_url != '') }}
     name: macOS GraalPy
-    runs-on: macos-latest
+    runs-on: ${{ inputs.debug_graalpy_arch == 'amd64' && 'macos-15-intel' || 'macos-latest' }}
     steps:
       - uses: actions/checkout@v5
       - run: git fetch --prune --unshallow
